@@ -10,6 +10,7 @@ import Anthropic from "@anthropic-ai/sdk";
  *   AI_MODEL           model id; default claude-opus-5-5 for Anthropic
  *   AI_BASE_URL        base URL for an OpenAI-compatible provider, e.g. https://api.example.com/v1
  *   AI_API_KEY         key for the OpenAI-compatible provider
+ *   AI_MAX_TOKENS      reply-length cap for the OpenAI-compatible provider (default 4000)
  */
 export interface ChatMsg {
   role: "user" | "assistant";
@@ -98,7 +99,7 @@ async function openaiCompatible(cfg: ReturnType<typeof aiConfig>, system: string
   const res = await fetch(`${cfg.base!.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${cfg.key}` },
-    body: JSON.stringify({ model: cfg.model, max_tokens: maxTokens, messages: [{ role: "system", content: system }, ...messages] }),
+    body: JSON.stringify({ model: cfg.model, max_tokens: Math.min(maxTokens, Number(process.env.AI_MAX_TOKENS) || 4000), messages: [{ role: "system", content: system }, ...messages] }),
   });
   if (!res.ok) throw new Error(`${res.status} ${(await res.text()).slice(0, 200)}`);
   const j = await res.json();
