@@ -7,6 +7,7 @@ import type { AttemptMode } from "@/lib/db";
 import { getSetting, setSetting } from "@/lib/db";
 import { recordAnswer } from "@/lib/engine";
 import { getQuestion } from "@/lib/bank";
+import { loadCustom } from "@/lib/custom-registry";
 import { topicLabel } from "@/data/taxonomy";
 import QuestionCard, { Explanation } from "./QuestionCard";
 import { Badge, Button, Card, Progress, fmtTime, pct } from "./ui";
@@ -62,17 +63,22 @@ export default function PracticeSession({
   // resume
   useEffect(() => {
     if (!saveKey) return;
-    getSetting<Saved | null>(saveKey, null).then((s) => {
+    (async () => {
+      await loadCustom();
+      const s = await getSetting<Saved | null>(saveKey, null);
       if (s && s.idx < s.qids.length) {
         const restored = s.qids.map((id) => getQuestion(id)).filter(Boolean) as Question[];
         if (restored.length === s.qids.length) {
           setQs(restored);
           setIdx(s.idx);
           setResults(s.results);
+          // the current question was already checked (e.g. you opened the tutor) → show its result again
+          if (mode === "practice" && s.results.length > s.idx) setSubmitted(true);
         }
       }
       setLoaded(true);
-    });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saveKey]);
 
   useEffect(() => {
@@ -96,6 +102,7 @@ export default function PracticeSession({
 
   async function submitPractice(chosen: number | null, timeMs: number) {
     if (!q) return;
+    if (results.length > idx) return setSubmitted(true); // already recorded
     const { correct } = await recordAnswer(q, chosen, timeMs, attemptMode);
     setResults((r) => [...r, { qid: q.id, chosen, correct, timeMs }]);
     setSubmitted(true);
@@ -164,7 +171,7 @@ export default function PracticeSession({
           <Button onClick={() => setPaused(false)}><Play size={15} /> Resume</Button>
         </div>
       ) : mode === "practice" ? (
-        <QuestionCard key={q.id} q={q} index={idx} total={qs.length} onSubmit={submitPractice} onNext={next} submitted={submitted} />
+        <QuestionCard key={q.id} q={q} index={idx} total={qs.length} onSubmit={submitPractice} onNext={next} submitted={submitted} selected={submitted ? results[idx]?.chosen ?? null : undefined} />
       ) : (
         <TimedItem key={q.id} q={q} idx={idx} total={qs.length} onNext={timedNext} onFinish={() => finishTimed()} />
       )}

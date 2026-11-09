@@ -87,22 +87,26 @@ async function mergeIntoLocal(remote: Snapshot) {
     for (const [table, key] of Object.entries(NATURAL)) {
       const local = (await db.table(table).toArray()) as Record<string, unknown>[];
       const byKey = new Map(local.map((r) => [key(r), r]));
+      const add: Record<string, unknown>[] = [];
       for (const r of (remote[table] ?? []) as Record<string, unknown>[]) {
         const existing = byKey.get(key(r));
         if (!existing) {
           const { id: _drop, ...rest } = r; // eslint-disable-line @typescript-eslint/no-unused-vars
-          await db.table(table).add(rest);
+          add.push(rest);
+          byKey.set(key(r), rest);
         } else if (table === "mocks" && (existing as unknown as MockRecord).status === "active" && (r as unknown as MockRecord).status === "done") {
           await db.table(table).put({ ...r, id: existing.id }); // finished on the other device
         }
       }
+      if (add.length) await db.table(table).bulkAdd(add);
     }
     // 2. keyed records: newest wins
     const newer = async <T>(table: string, pk: keyof T, score: (r: T) => number) => {
-      for (const r of (remote[table] ?? []) as T[]) {
-        const l = (await db.table(table).get(r[pk] as never)) as T | undefined;
-        if (!l || score(r) > score(l)) await db.table(table).put(r);
-      }
+      const rows = (remote[table] ?? []) as T[];
+      if (!rows.length) return;
+      const locals = (await db.table(table).bulkGet(rows.map((r) => r[pk] as never))) as (T | undefined)[];
+      const put = rows.filter((r, i) => !locals[i] || score(r) > score(locals[i]!));
+      if (put.length) await db.table(table).bulkPut(put);
     };
     await newer<Mistake>("mistakes", "qid", (r) => r.lastAt);
     await newer<VocabCard>("vocab", "word", (r) => r.lastAt * 1000 + r.seen);
@@ -141,11 +145,11 @@ async function mergeIntoLocal(remote: Snapshot) {
       c.answered++; c.ms += a.timeMs; if (a.correct) c.correct++;
       counts.set(k, c);
     }
-    for (const date of dates) {
+    await db.days.bulkPut([...dates].map((date) => {
       const l = localDays.get(date), r = remoteDays.get(date);
       const c = counts.get(date) ?? { answered: 0, correct: 0, ms: 0 };
-      await db.days.put({ date, ...c, tasksDone: [...new Set([...(l?.tasksDone ?? []), ...(r?.tasksDone ?? [])])] });
-    }
+      return { date, ...c, tasksDone: [...new Set([...(l?.tasksDone ?? []), ...(r?.tasksDone ?? [])])] };
+    }));
   });
 }
 
@@ -183,10 +187,11 @@ export function useAutoSync() {
       last = Date.now();
       syncNow().catch(() => {});
     };
-    tick(true);
+    // first sync a few seconds after opening, so it never delays loading the page
+    const first = setTimeout(() => tick(true), 6000);
     const t = setInterval(() => tick(), 5 * 60_000);
     const vis = () => { if (document.visibilityState === "hidden") tick(true); else tick(); };
     document.addEventListener("visibilitychange", vis);
-    return () => { clearInterval(t); document.removeEventListener("visibilitychange", vis); };
+    return () => { clearTimeout(first); clearInterval(t); document.removeEventListener("visibilitychange", vis); };
   }, []);
 }

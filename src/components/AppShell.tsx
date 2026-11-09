@@ -9,7 +9,7 @@ import {
 import clsx from "clsx";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
-import { registerCustom } from "@/lib/bank";
+import { registerCustom } from "@/lib/custom-registry";
 import InstallButton, { useServiceWorker } from "./InstallButton";
 import { useAutoSync } from "@/lib/sync";
 

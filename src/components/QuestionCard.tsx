@@ -10,7 +10,9 @@ import { db } from "@/lib/db";
 import { PASSAGE_BY_ID } from "@/lib/bank";
 import { topicLabel } from "@/data/taxonomy";
 import { Badge, Button, RichText, fmtTime } from "./ui";
-import DataChart from "./DataChart";
+import dynamic from "next/dynamic";
+
+const DataChart = dynamic(() => import("./DataChart"), { ssr: false, loading: () => <div className="h-64 animate-pulse rounded-xl bg-surface-2" /> });
 
 const LETTERS = "ABCDE";
 

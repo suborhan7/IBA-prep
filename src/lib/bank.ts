@@ -6,17 +6,14 @@ import { ANALYTICAL_QUESTIONS } from "@/data/questions/analytical";
 import { VOCAB, VOCAB_BY_WORD } from "@/data/vocab";
 import { GENERATORS, GENERATOR_KEYS, rebuildGenerated } from "./generators";
 import { hashStr, mulberry32, pick, shuffle } from "./rng";
+import { CUSTOM, registerCustom } from "./custom-registry";
 
 export const STATIC_QUESTIONS: Question[] = [...ENGLISH_QUESTIONS, ...RC_QUESTIONS, ...QUANT_QUESTIONS, ...ANALYTICAL_QUESTIONS];
 const BY_ID = new Map(STATIC_QUESTIONS.map((q) => [q.id, q]));
 export const PASSAGE_BY_ID = Object.fromEntries(PASSAGES.map((p) => [p.id, p]));
 
-/** Custom (AI-generated, approved) questions are registered here at runtime from the DB. */
-const CUSTOM = new Map<string, Question>();
-export function registerCustom(qs: Question[]) {
-  CUSTOM.clear();
-  for (const q of qs) CUSTOM.set(q.id, q);
-}
+/** Custom (AI-generated, approved) questions are registered at runtime from the DB. */
+export { registerCustom };
 export function customQuestions() {
   return [...CUSTOM.values()];
 }
