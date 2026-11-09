@@ -1,0 +1,153 @@
+import type { Puzzle } from "@/lib/puzzle-engine";
+import { neighbours } from "@/lib/puzzle-engine";
+
+/** Original arrangement puzzles. scripts/verify-bank.ts proves each has exactly one solution. */
+
+const at = (sol: string[], i: number) => sol[i];
+
+export const PUZZLES: Puzzle[] = [
+  {
+    id: "pz-row5",
+    title: "Five analysts in a row",
+    kind: "linear",
+    difficulty: 2,
+    setup: "Five analysts — Ali, Bina, Chandan, Dipa and Emon — sit in a row of five seats facing north. Seat 1 is at the far left.",
+    entities: ["Ali", "Bina", "Chandan", "Dipa", "Emon"],
+    slotLabels: ["Seat 1", "Seat 2", "Seat 3", "Seat 4", "Seat 5"],
+    constraints: [
+      { c: { t: "at", a: "Chandan", pos: 2 }, text: "Chandan sits in the middle seat." },
+      { c: { t: "immBefore", a: "Chandan", b: "Bina" }, text: "Bina sits immediately to the right of Chandan." },
+      { c: { t: "end", a: "Ali" }, text: "Ali sits at one of the ends." },
+      { c: { t: "notAt", a: "Ali", pos: 0 }, text: "Ali does not sit at the left end." },
+      { c: { t: "notAdjacent", a: "Dipa", b: "Chandan" }, text: "Dipa does not sit next to Chandan." },
+    ],
+    solution: ["Dipa", "Emon", "Chandan", "Bina", "Ali"],
+    questions: [
+      { stem: "Who sits in Seat 2?", options: ["Ali", "Dipa", "Emon", "Bina"], answer: (s) => at(s, 1), why: "Once Chandan (3), Bina (4) and Ali (5) are fixed, Dipa must avoid seats 2 and 4, leaving seat 1, so Emon takes seat 2." },
+      { stem: "Who sits at the left end?", options: ["Ali", "Dipa", "Emon", "Chandan"], answer: (s) => at(s, 0), why: "Dipa is the only person who can avoid both of Chandan's neighbouring seats." },
+      { stem: "How many people sit between Emon and Ali?", options: ["1", "2", "3", "0"], answer: (s) => String(Math.abs(s.indexOf("Emon") - s.indexOf("Ali")) - 1), why: "Emon is in seat 2 and Ali in seat 5, so two people (seats 3 and 4) sit between them." },
+    ],
+    walkthrough: [
+      "Fixed facts first: Chandan = seat 3, so Bina = seat 4.",
+      "Ali is at an end but not the left end → Ali = seat 5.",
+      "Dipa cannot be in seat 2 or 4 (next to Chandan). Seat 4 is taken anyway → Dipa = seat 1.",
+      "Emon takes the only remaining seat, 2. Verify every condition.",
+    ],
+  },
+  {
+    id: "pz-floors",
+    title: "Five firms, five floors",
+    kind: "floors",
+    difficulty: 3,
+    setup: "Five companies — Kona, Lumen, Mitra, Nexus and Orbit — each occupy one floor of a five-storey building. Floor 1 is the lowest.",
+    entities: ["Kona", "Lumen", "Mitra", "Nexus", "Orbit"],
+    slotLabels: ["Floor 1", "Floor 2", "Floor 3", "Floor 4", "Floor 5"],
+    constraints: [
+      { c: { t: "before", a: "Lumen", b: "Mitra" }, text: "Lumen is on a lower floor than Mitra." },
+      { c: { t: "immBefore", a: "Nexus", b: "Kona" }, text: "Kona is on the floor immediately above Nexus." },
+      { c: { t: "gap", a: "Orbit", b: "Nexus", n: 1 }, text: "Exactly one floor lies between Orbit and Nexus." },
+      { c: { t: "before", a: "Mitra", b: "Orbit" }, text: "Orbit is on a higher floor than Mitra." },
+      { c: { t: "notAt", a: "Orbit", pos: 0 }, text: "Orbit is not on the ground floor." },
+    ],
+    solution: ["Lumen", "Mitra", "Nexus", "Kona", "Orbit"],
+    questions: [
+      { stem: "Which company is on the top floor?", options: ["Kona", "Mitra", "Orbit", "Nexus"], answer: (s) => at(s, 4), why: "Orbit is above Mitra, which is above Lumen, so Orbit is at least on floor 3. Orbit and Nexus have one floor between them and Kona sits directly on Nexus — the only fit is Nexus 3, Kona 4, Orbit 5." },
+      { stem: "Which company is immediately below Orbit?", options: ["Nexus", "Mitra", "Kona", "Lumen"], answer: (s) => at(s, s.indexOf("Orbit") - 1), why: "Orbit is on floor 5 and Kona on floor 4." },
+      { stem: "How many companies are above Mitra?", options: ["1", "2", "3", "4"], answer: (s) => String(4 - s.indexOf("Mitra")), why: "Mitra is on floor 2, with three companies above it." },
+    ],
+    walkthrough: [
+      "Chain the order rules: Lumen < Mitra < Orbit, so Orbit is on floor 3 or higher.",
+      "Nexus–Kona form a block (Kona directly above Nexus), and Orbit is two floors from Nexus.",
+      "Try Orbit 5 → Nexus 3, Kona 4, leaving floors 1–2 for Lumen < Mitra → Lumen 1, Mitra 2. ✓",
+      "Try Orbit 4 → Nexus 2 (Kona 3) leaves Mitra and Lumen for floors 1 and 5, but Mitra must be below Orbit and above Lumen ✗. Orbit 3 → Nexus 1, Kona 2, leaving 4–5 for Lumen and Mitra, both above Orbit ✗.",
+      "So: Lumen 1, Mitra 2, Nexus 3, Kona 4, Orbit 5.",
+    ],
+  },
+  {
+    id: "pz-round6",
+    title: "Six directors at a round table",
+    kind: "circular",
+    difficulty: 4,
+    setup: "Six directors — Farah, Gazi, Hasan, Ishrat, Jamil and Kakon — sit around a round table, evenly spaced, all facing the centre.",
+    entities: ["Farah", "Gazi", "Hasan", "Ishrat", "Jamil", "Kakon"],
+    slotLabels: ["Seat 1", "Seat 2", "Seat 3", "Seat 4", "Seat 5", "Seat 6"],
+    constraints: [
+      { c: { t: "opposite", a: "Farah", b: "Ishrat" }, text: "Farah sits directly opposite Ishrat." },
+      { c: { t: "immRight", a: "Gazi", b: "Farah" }, text: "Gazi sits immediately to the right of Farah." },
+      { c: { t: "adjacent", a: "Hasan", b: "Ishrat" }, text: "Hasan sits next to Ishrat." },
+      { c: { t: "notAdjacent", a: "Jamil", b: "Gazi" }, text: "Jamil does not sit next to Gazi." },
+      { c: { t: "notAdjacent", a: "Hasan", b: "Gazi" }, text: "Hasan does not sit next to Gazi." },
+    ],
+    solution: ["Farah", "Jamil", "Hasan", "Ishrat", "Kakon", "Gazi"],
+    questions: [
+      { stem: "Who sits immediately to the left of Farah?", options: ["Kakon", "Jamil", "Hasan", "Gazi"], answer: (s) => neighbours(s, "Farah").left, why: "See the walkthrough." },
+      { stem: "Who sits directly opposite Gazi?", options: ["Hasan", "Jamil", "Kakon", "Ishrat"], answer: (s) => s[(s.indexOf("Gazi") + 3) % 6], why: "In a table of six, the person opposite is three seats away." },
+      { stem: "Who are Ishrat's two neighbours?", options: ["Hasan and Jamil", "Hasan and Kakon", "Jamil and Kakon", "Gazi and Hasan"], answer: (s) => { const nb = neighbours(s, "Ishrat"); const pair = [nb.left, nb.right].sort(); return `${pair[0]} and ${pair[1]}`; }, why: "Read both sides of Ishrat on the final board." },
+    ],
+    walkthrough: [
+      "Anchor Farah. Ishrat is opposite (3 seats away). Gazi is Farah's immediate right.",
+      "The two seats next to Ishrat: one of them is next to Gazi. Hasan must sit next to Ishrat but not next to Gazi → Hasan takes the other seat beside Ishrat.",
+      "Two seats remain for Jamil and Kakon. Jamil may not be beside Gazi → Kakon goes beside Gazi, Jamil takes the last seat.",
+      "Verify all five conditions.",
+    ],
+  },
+  {
+    id: "pz-week",
+    title: "Six presentations, one week",
+    kind: "schedule",
+    difficulty: 4,
+    setup: "Six teams — Alpha, Beta, Gamma, Delta, Epsilon and Zeta — each give one presentation on a different day from Monday to Saturday.",
+    entities: ["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta"],
+    slotLabels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    constraints: [
+      { c: { t: "before", a: "Gamma", b: "Alpha" }, text: "Gamma presents earlier in the week than Alpha." },
+      { c: { t: "gap", a: "Beta", b: "Delta", n: 3 }, text: "Exactly three days separate Beta and Delta (three presentations between them)." },
+      { c: { t: "immBefore", a: "Epsilon", b: "Zeta" }, text: "Zeta presents on the day right after Epsilon." },
+      { c: { t: "notEnd", a: "Gamma" }, text: "Gamma does not present on Monday or Saturday." },
+      { c: { t: "before", a: "Delta", b: "Beta" }, text: "Delta presents before Beta." },
+      { c: { t: "before", a: "Gamma", b: "Epsilon" }, text: "Gamma presents before Epsilon." },
+    ],
+    solution: ["Delta", "Gamma", "Epsilon", "Zeta", "Beta", "Alpha"],
+    questions: [
+      { stem: "Which team presents on Wednesday?", options: ["Gamma", "Epsilon", "Alpha", "Zeta"], answer: (s) => at(s, 2), why: "See the walkthrough." },
+      { stem: "Which team presents on Saturday?", options: ["Beta", "Zeta", "Alpha", "Epsilon"], answer: (s) => at(s, 5), why: "Read the final schedule." },
+      { stem: "How many teams present between Gamma and Zeta?", options: ["0", "1", "2", "3"], answer: (s) => String(Math.abs(s.indexOf("Gamma") - s.indexOf("Zeta")) - 1), why: "Count the days strictly between them." },
+    ],
+    walkthrough: [
+      "Delta before Beta with exactly three between → (Mon, Fri) or (Tue, Sat).",
+      "Case (Tue, Sat): free days Mon, Wed, Thu, Fri. Gamma can't be Monday, and Gamma must come before Alpha AND Epsilon–Zeta — there isn't room ✗.",
+      "Case (Mon, Fri): free days Tue, Wed, Thu, Sat. Epsilon–Zeta need consecutive days: (Tue, Wed) or (Wed, Thu). Gamma must be before Epsilon and not on Saturday → Gamma Tue, Epsilon Wed, Zeta Thu.",
+      "Alpha takes Saturday (after Gamma ✓). Final: Delta, Gamma, Epsilon, Zeta, Beta, Alpha.",
+    ],
+  },
+  {
+    id: "pz-round8",
+    title: "Eight bankers at a round table",
+    kind: "circular",
+    difficulty: 6,
+    setup: "Eight bankers — Arif, Babu, Chaya, Dola, Ehsan, Fahim, Gita and Hira — sit around a round table, evenly spaced, facing the centre.",
+    entities: ["Arif", "Babu", "Chaya", "Dola", "Ehsan", "Fahim", "Gita", "Hira"],
+    slotLabels: ["Seat 1", "Seat 2", "Seat 3", "Seat 4", "Seat 5", "Seat 6", "Seat 7", "Seat 8"],
+    constraints: [
+      { c: { t: "opposite", a: "Arif", b: "Ehsan" }, text: "Arif sits opposite Ehsan." },
+      { c: { t: "immLeft", a: "Babu", b: "Arif" }, text: "Babu sits immediately to the left of Arif." },
+      { c: { t: "gap", a: "Chaya", b: "Babu", n: 2 }, text: "Exactly two people sit between Chaya and Babu (counting the shorter way round)." },
+      { c: { t: "notAdjacent", a: "Chaya", b: "Arif" }, text: "Chaya does not sit next to Arif." },
+      { c: { t: "immRight", a: "Dola", b: "Ehsan" }, text: "Dola sits immediately to the right of Ehsan." },
+      { c: { t: "opposite", a: "Fahim", b: "Dola" }, text: "Fahim sits opposite Dola." },
+      { c: { t: "notAdjacent", a: "Gita", b: "Dola" }, text: "Gita does not sit next to Dola." },
+    ],
+    solution: ["Arif", "Babu", "Hira", "Dola", "Ehsan", "Gita", "Chaya", "Fahim"],
+    questions: [
+      { stem: "Who sits opposite Babu?", options: ["Gita", "Hira", "Chaya", "Dola"], answer: (s) => s[(s.indexOf("Babu") + 4) % 8], why: "Opposite = four seats away in a table of eight." },
+      { stem: "Who sits immediately to the right of Chaya?", options: ["Dola", "Ehsan", "Gita", "Hira"], answer: (s) => neighbours(s, "Chaya").right, why: "Facing the centre, right is the seat counter-clockwise." },
+      { stem: "Which pair sits next to each other?", options: ["Gita and Arif", "Hira and Fahim", "Chaya and Babu", "Chaya and Fahim"], answer: (s) => { const pairs = [["Gita", "Arif"], ["Hira", "Fahim"], ["Chaya", "Babu"], ["Chaya", "Fahim"]]; const n = s.length; const adj = (a: string, b: string) => { const d = Math.abs(s.indexOf(a) - s.indexOf(b)); return Math.min(d, n - d) === 1; }; const p = pairs.find(([a, b]) => adj(a, b)); return p ? `${p[0]} and ${p[1]}` : ""; }, why: "Check each pair on the final board." },
+    ],
+    walkthrough: [
+      "Anchor Arif. Ehsan is opposite; Babu is Arif's immediate left.",
+      "Dola is Ehsan's immediate right; Fahim is opposite Dola.",
+      "Chaya has exactly two people between her and Babu — two candidate seats, one of which is already Ehsan's.",
+      "Gita must avoid Dola's neighbours; Hira takes the last seat.",
+    ],
+  },
+];
