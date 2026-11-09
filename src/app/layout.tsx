@@ -5,6 +5,9 @@ import AppShell from "@/components/AppShell";
 export const metadata: Metadata = {
   title: "IBA Prep — DU IBA MBA admission trainer",
   description: "Adaptive preparation for the University of Dhaka IBA MBA admission test: English, Mathematics, Analytical ability, mocks and a personal tutor.",
+  applicationName: "IBA Prep",
+  appleWebApp: { capable: true, title: "IBA Prep", statusBarStyle: "default" },
+  icons: { icon: [{ url: "/icon-192.png", sizes: "192x192" }], apple: "/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {

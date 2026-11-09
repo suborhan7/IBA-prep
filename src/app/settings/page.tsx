@@ -6,6 +6,8 @@ import { exportAll, importAll, resetAll, setSetting, getSetting } from "@/lib/db
 import { getPrefs, savePrefs, type Prefs } from "@/lib/mission";
 import { SUBJECT_NAME } from "@/lib/mock";
 import { Button, Card, CardTitle, Loading, PageHeader, Select } from "@/components/ui";
+import SyncCard from "@/components/SyncCard";
+import InstallButton from "@/components/InstallButton";
 
 const input = "rounded-xl border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-accent";
 
@@ -60,6 +62,14 @@ export default function Settings() {
       <PageHeader eyebrow="Settings" title="Preferences and data" subtitle="Everything is stored in this browser. Export a backup before clearing browser data or switching devices." />
       {msg && <div className="fixed bottom-5 right-5 z-50 rounded-xl bg-ink px-4 py-2 text-[14px] text-bg shadow-lg">{msg}</div>}
       <div className="grid gap-5 lg:grid-cols-2">
+        <SyncCard />
+        <Card className="lg:col-span-2 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-[15px] font-semibold">Install as an app</div>
+            <p className="text-[13px] text-muted">Opens in its own window with an icon on your home screen or desktop, and practice works offline. If no button shows, the app is already installed (or open this page in Chrome, Edge or Safari).</p>
+          </div>
+          <div className="w-40"><InstallButton /></div>
+        </Card>
         <Card>
           <CardTitle>Study plan</CardTitle>
           <div className="grid gap-3 sm:grid-cols-2">

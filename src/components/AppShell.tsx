@@ -10,6 +10,8 @@ import clsx from "clsx";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { registerCustom } from "@/lib/bank";
+import InstallButton, { useServiceWorker } from "./InstallButton";
+import { useAutoSync } from "@/lib/sync";
 
 export const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -48,6 +50,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [path]);
+  useServiceWorker();
+  useAutoSync();
 
   // keep approved AI questions available to the question bank
   const custom = useLiveQuery(() => db.custom.where("status").equals("approved").toArray(), []);
@@ -95,6 +99,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </Link>
         <div className="flex-1 overflow-y-auto">{nav}</div>
+        <InstallButton className="mt-3" />
         <div className="mt-3 flex items-center justify-between px-2 text-[11px] text-muted">
           <span>Progress saved on this device</span>
           <ThemeToggle />
@@ -104,7 +109,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-surface/95 px-4 py-2.5 backdrop-blur lg:hidden">
         <button onClick={() => setOpen(true)} aria-label="Open menu" className="rounded-lg p-2 hover:bg-surface-2"><Menu size={20} /></button>
         <Link href="/" className="font-semibold">IBA Prep</Link>
-        <ThemeToggle />
+        <div className="flex items-center"><InstallButton compact /><ThemeToggle /></div>
       </header>
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">

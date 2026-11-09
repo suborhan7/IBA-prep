@@ -91,7 +91,30 @@ Keys are read only by the server routes (`/api/tutor` and `/api/generate`) and a
 3. (Optional) Under **Environment Variables**, add `ANTHROPIC_API_KEY`.
 4. Click **Deploy**. Every push to `main` redeploys automatically.
 
-Each browser keeps its own progress. To move between your phone and laptop, use **Settings → Export**, then **Import** on the other device.
+### Turn on phone ↔ laptop sync (free, one-time setup)
+
+1. In Vercel, open the project → **Storage** → **Create** → **Blob**. Choose **Private** access.
+2. Connect it to this project. Vercel adds `BLOB_READ_WRITE_TOKEN` automatically.
+3. Go to **Deployments** → **⋯** → **Redeploy**.
+4. In the app, open **Settings → Sync between phone and laptop**:
+   - On the first device, click **Create a sync code**.
+   - On the other device, enter the same code.
+
+After that, sync runs automatically:
+- when the app opens
+- every 5 minutes
+- when you switch away
+
+Answers from both devices are combined, not overwritten. The code never leaves your device; the server only stores a copy under a hash of it. If you made the Blob store **Public** by mistake, also set `SYNC_BLOB_ACCESS=public`.
+
+When running the app on your own computer, `SYNC_LOCAL_DIR=./.sync` stores the copies in a folder instead.
+
+### Install as an app
+
+- **Android, Chrome or Edge on a laptop:** use the **Install app** button in the sidebar, the phone header, or Settings.
+- **iPhone (Safari):** tap **Share → Add to Home Screen**.
+
+The installed app opens in its own window and practice works offline.
 
 ## Project layout
 
