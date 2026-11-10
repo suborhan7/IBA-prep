@@ -9,6 +9,7 @@ import { Button, Card, CardTitle, Loading, PageHeader, Select } from "@/componen
 import SyncCard from "@/components/SyncCard";
 import StorageCard from "@/components/StorageCheck";
 import InstallButton from "@/components/InstallButton";
+import ProblemLog from "@/components/ProblemLog";
 
 const input = "rounded-xl border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-accent";
 
@@ -111,6 +112,7 @@ export default function Settings() {
         </Card>
 
         <StorageCard />
+        <ProblemLog />
         <Card>
           <CardTitle>AI tutor</CardTitle>
           {!ai ? <Loading /> : ai.available ? (

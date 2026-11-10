@@ -8,6 +8,7 @@ import { getSetting, setSetting, withTimeout } from "@/lib/db";
 import { recordAnswer, recordAnswers } from "@/lib/engine";
 import { getQuestion } from "@/lib/bank";
 import { loadCustom } from "@/lib/custom-registry";
+import { logProblem } from "@/lib/health";
 import { topicLabel } from "@/data/taxonomy";
 import QuestionCard, { Explanation } from "./QuestionCard";
 import { Badge, Button, Card, Progress, fmtTime, pct } from "./ui";
@@ -115,7 +116,10 @@ export default function PracticeSession({
     const correct = chosen === q.answer;
     setResults((r) => [...r, { qid: q.id, chosen, correct, timeMs }]);
     setSubmitted(true);
-    recordAnswer(q, chosen, timeMs, attemptMode).catch((e) => setSaveError(String(e?.message ?? e)));
+    const t0 = Date.now();
+    recordAnswer(q, chosen, timeMs, attemptMode)
+      .then(() => { if (Date.now() - t0 > 3000) logProblem(`Saving an answer took ${Math.round((Date.now() - t0) / 1000)} s`); })
+      .catch((e) => { setSaveError(String(e?.message ?? e)); logProblem(`Saving an answer failed: ${e?.message ?? e}`); });
   }
 
   function next() {

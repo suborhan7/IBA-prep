@@ -434,7 +434,7 @@ const T = 5000; // any reaction slower than this counts as "not responding"
   await step('settings: sync code create → sync now → copy', async () => {
     await go('/settings'); await tap(btn('Create a sync code'));
     await text(/^Synced\./).waitFor({ timeout: 8000 });
-    await tap(page.getByRole('button', { name: /Copy/ }));
+    await tap(page.getByRole('button', { name: 'Copy', exact: true }));
     await page.waitForTimeout(300);
     await tap(page.getByRole('button', { name: /Sync now/ }));
     await page.waitForTimeout(1500);

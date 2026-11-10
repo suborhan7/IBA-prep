@@ -12,6 +12,7 @@ import { db } from "@/lib/db";
 import { registerCustom } from "@/lib/custom-registry";
 import InstallButton, { useServiceWorker } from "./InstallButton";
 import { StorageBanner } from "./StorageCheck";
+import { BUILD, useAppHealth } from "@/lib/health";
 import { useAutoSync } from "@/lib/sync";
 
 export const NAV = [
@@ -53,6 +54,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => setOpen(false), [path]);
   useServiceWorker();
   useAutoSync();
+  useAppHealth();
 
   // keep approved AI questions available to the question bank
   const custom = useLiveQuery(() => db.custom.where("status").equals("approved").toArray(), []);
@@ -102,7 +104,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex-1 overflow-y-auto">{nav}</div>
         <InstallButton className="mt-3" />
         <div className="mt-3 flex items-center justify-between px-2 text-[11px] text-muted">
-          <span>Progress saved on this device</span>
+          <span>Progress saved on this device · v{BUILD}</span>
           <ThemeToggle />
         </div>
       </aside>
