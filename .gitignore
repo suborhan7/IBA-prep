@@ -42,3 +42,4 @@ next-env.d.ts
 
 !.env.example
 /.sync
+tests/e2e/shots/
