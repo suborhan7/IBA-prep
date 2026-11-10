@@ -226,3 +226,11 @@ export async function resetAll() {
     for (const name of TABLES) await db.table(name).clear();
   });
 }
+
+/** Resolve with `fallback` if `p` hasn't settled within `ms` (or rejects). Keeps the UI moving if storage stalls. */
+export function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    const t = setTimeout(() => resolve(fallback), ms);
+    p.then((v) => { clearTimeout(t); resolve(v); }, () => { clearTimeout(t); resolve(fallback); });
+  });
+}

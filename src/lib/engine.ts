@@ -1,5 +1,5 @@
 "use client";
-import { db, todayKey, type Attempt, type AttemptMode, type Mistake, type SkillRating } from "./db";
+import { db, todayKey, withTimeout, type Attempt, type AttemptMode, type Mistake, type SkillRating } from "./db";
 import type { MistakeCause, Question, Subject } from "./types";
 import { DAY, nextMistakeInterval } from "./srs";
 import { allQuestions, generatedFor, getQuestion } from "./bank";
@@ -23,6 +23,13 @@ export function guessCause(q: Question, chosen: number | null, timeMs: number): 
   if (["synonym", "antonym", "analogy", "vocab-context", "sentence-completion", "idioms"].includes(q.topic)) return "vocabulary";
   if (q.topic === "rc") return "misreading";
   return "grammar";
+}
+
+/** Save a whole timed set in one quick transaction (so it lands before the student navigates away). */
+export async function recordAnswers(items: { q: Question; chosen: number | null; timeMs: number }[], mode: AttemptMode) {
+  await db.transaction("rw", [db.attempts, db.skills, db.mistakes, db.days], async () => {
+    for (const it of items) await recordAnswer(it.q, it.chosen, it.timeMs, mode);
+  });
 }
 
 export async function recordAnswer(q: Question, chosen: number | null, timeMs: number, mode: AttemptMode) {
@@ -130,9 +137,10 @@ export async function getRatings(): Promise<Record<string, SkillRating>> {
 
 /** Pick questions pitched just above the student's level, weighted toward weak topics. */
 export async function adaptiveSet(opts: { subject?: Subject; topic?: string; count: number; seed?: number; avoidRecent?: boolean }): Promise<Question[]> {
-  const ratings = await getRatings();
+  // If the browser database is slow or blocked, fall back to an unadapted set rather than hang.
+  const ratings = await withTimeout(getRatings(), 3000, {} as Record<string, SkillRating>);
   const recent = new Set(
-    opts.avoidRecent === false ? [] : (await db.attempts.where("at").above(Date.now() - 2 * DAY).toArray()).map((a) => a.qid),
+    opts.avoidRecent === false ? [] : (await withTimeout(db.attempts.where("at").above(Date.now() - 2 * DAY).toArray(), 3000, [] as Attempt[])).map((a) => a.qid),
   );
   const r = mulberry32(opts.seed ?? Date.now());
   const topics = TOPICS.filter((t) => (!opts.subject || t.subject === opts.subject) && (!opts.topic || t.id === opts.topic));

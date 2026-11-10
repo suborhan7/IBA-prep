@@ -47,18 +47,17 @@ export default function PuzzleBoard({ p }: { p: Puzzle }) {
     setSel(null);
   }
 
-  async function submit() {
+  function submit() {
     setAttempted(true);
     const ok = normalise(p, board as string[]).every((x, i) => x === p.solution[i]);
     if (ok) {
       const ms = Date.now() - start.current;
       setSolvedMs(ms);
       setStatus("solved");
-      await db.puzzles.add({ puzzleId: p.id, solved: true, ms, at: Date.now() });
-      await markTask("puzzle");
+      db.puzzles.add({ puzzleId: p.id, solved: true, ms, at: Date.now() }).then(() => markTask("puzzle")).catch(() => {});
     } else {
       setStatus("wrong");
-      await db.puzzles.add({ puzzleId: p.id, solved: false, ms: Date.now() - start.current, at: Date.now() });
+      db.puzzles.add({ puzzleId: p.id, solved: false, ms: Date.now() - start.current, at: Date.now() }).catch(() => {});
     }
   }
 

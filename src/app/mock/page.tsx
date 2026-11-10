@@ -325,7 +325,7 @@ function WritingSection({ rec }: { rec: MockRecord }) {
       <CardTitle icon={<PenLine size={16} className="text-accent" />} right={<span className={clsx("rounded-lg px-2 py-1 text-[13px] font-medium tabular-nums", left < 300 ? "bg-bad/12 text-bad" : "bg-surface-2")}>{fmtTime(Math.max(0, left) * 1000)}</span>}>Written part · 30 minutes</CardTitle>
       <p className="mb-3 font-serif text-[16px]">{prompt}</p>
       {!running && !locked && <Button onClick={() => setRunning(true)} className="mb-3"><Play size={14} /> {secs ? "Continue writing" : "Start the 30-minute clock"}</Button>}
-      <textarea value={text} onChange={(e) => setText(e.target.value)} disabled={!running || locked} rows={12} className="w-full rounded-xl border border-line bg-surface p-3 text-[15px] leading-relaxed outline-none focus:border-accent disabled:opacity-70" placeholder="Plan for 3 minutes, write for 22, proofread for 5." />
+      <textarea value={text} onFocus={() => !locked && setRunning(true)} onChange={(e) => { setText(e.target.value); if (!running) setRunning(true); }} disabled={locked} rows={12} className="w-full rounded-xl border border-line bg-surface p-3 text-[15px] leading-relaxed outline-none focus:border-accent disabled:opacity-70" placeholder="Tap here to start writing (the clock starts with you). Plan for 3 minutes, write for 22, proofread for 5." />
       <div className="mt-2 flex justify-between text-[12.5px] text-muted"><span>{words} words</span>{locked && <span className="text-bad">Time's up — writing is locked.</span>}</div>
       <details className="mt-3 text-[13.5px]">
         <summary className="cursor-pointer font-medium">Self-check (the written part isn't auto-graded)</summary>

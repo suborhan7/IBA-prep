@@ -7,6 +7,7 @@ import { getPrefs, savePrefs, type Prefs } from "@/lib/mission";
 import { SUBJECT_NAME } from "@/lib/mock";
 import { Button, Card, CardTitle, Loading, PageHeader, Select } from "@/components/ui";
 import SyncCard from "@/components/SyncCard";
+import StorageCard from "@/components/StorageCheck";
 import InstallButton from "@/components/InstallButton";
 
 const input = "rounded-xl border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-accent";
@@ -109,6 +110,7 @@ export default function Settings() {
           {custom && <Button className="mt-3" size="sm" variant="ghost" onClick={async () => { setCustom(null); await setSetting("examConfig:custom", null); if (prefs.examPreset === "custom") update({ examPreset: "reported-70" }); }}>Remove custom format</Button>}
         </Card>
 
+        <StorageCard />
         <Card>
           <CardTitle>AI tutor</CardTitle>
           {!ai ? <Loading /> : ai.available ? (

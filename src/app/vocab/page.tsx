@@ -138,12 +138,14 @@ function Study() {
     setKind(usable[Math.floor(Math.random() * usable.length)]);
   };
 
-  const grade = async (quality: number) => {
+  const grade = (quality: number) => {
     if (!queue) return;
     const item = queue[pos];
-    const card: VocabCard = (await db.vocab.get(item.word)) ?? newCard(item.word);
-    const updated = sm2(card, quality);
-    await db.vocab.put(updated);
+    // save in the background so a slow database never freezes the buttons
+    (async () => {
+      const card: VocabCard = (await db.vocab.get(item.word)) ?? newCard(item.word);
+      await db.vocab.put(sm2(card, quality));
+    })().catch(() => {});
     const extra: Item[] = [];
     if (quality < 3) extra.push({ word: item.word, intro: false }); // forgotten → see it again this session
     const nextQueue = [...queue];
@@ -153,13 +155,16 @@ function Study() {
     advance(nextQueue);
   };
 
-  const finishIntro = async () => {
+  const finishIntro = () => {
     if (!queue) return;
     const key = `vocab-new:${todayKey()}`;
-    const cur = ((await db.settings.get(key))?.value as number) ?? 0;
-    await db.settings.put({ key, value: cur + 1 });
-    const card = (await db.vocab.get(queue[pos].word)) ?? newCard(queue[pos].word);
-    if (card.seen === 0) await db.vocab.put({ ...card, status: "learning" });
+    const word = queue[pos].word;
+    (async () => {
+      const cur = ((await db.settings.get(key))?.value as number) ?? 0;
+      await db.settings.put({ key, value: cur + 1 });
+      const card = (await db.vocab.get(word)) ?? newCard(word);
+      if (card.seen === 0) await db.vocab.put({ ...card, status: "learning" });
+    })().catch(() => {});
     setSessionDone((s) => ({ ...s, learned: s.learned + 1 }));
     advance(queue);
   };
@@ -355,9 +360,15 @@ function Games() {
   // Match game
   const [match, setMatch] = useState(() => shuffle(mulberry32(Date.now() + 1), VOCAB).slice(0, 5));
   const [bn, setBn] = useState(() => shuffle(mulberry32(Date.now() + 2), match.map((w) => w.word)));
-  const [sel, setSel] = useState<string | null>(null);
+  const [sel, setSel] = useState<{ side: "bn" | "en"; word: string } | null>(null);
   const [paired, setPaired] = useState<Record<string, boolean>>({});
   const [wrong, setWrong] = useState<string | null>(null);
+  // tap a meaning then a word, or a word then a meaning; tapping the same side again changes the selection
+  const pick = (side: "bn" | "en", word: string) => {
+    if (!sel || sel.side === side) return setSel(sel?.side === side && sel.word === word ? null : { side, word });
+    if (sel.word === word) { setPaired((p) => ({ ...p, [word]: true })); setSel(null); speak(word); }
+    else { setWrong(`${side}:${word}`); setTimeout(() => setWrong(null), 600); setSel(null); }
+  };
   const newMatch = () => { const m = shuffle(mulberry32(Date.now()), VOCAB).slice(0, 5); setMatch(m); setBn(shuffle(mulberry32(Date.now() + 3), m.map((w) => w.word))); setPaired({}); setSel(null); };
 
   return (
@@ -388,24 +399,20 @@ function Games() {
       </Card>
       <Card>
         <CardTitle right={<Button size="sm" variant="ghost" onClick={newMatch}><Shuffle size={14} /> New set</Button>}>Match the Bengali meaning</CardTitle>
-        <p className="mb-3 text-[13px] text-muted">Select a Bengali meaning, then the English word.</p>
+        <p className="mb-3 text-[13px] text-muted">Tap a Bengali meaning and then its English word (either order works).</p>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             {match.map((w) => (
-              <button key={w.word} disabled={paired[w.word]} onClick={() => setSel(w.word)}
-                className={clsx("w-full rounded-xl border px-3 py-2 text-left text-[13.5px]", paired[w.word] ? "border-good bg-good/10 opacity-70" : sel === w.word ? "border-accent bg-accent-soft" : "border-line")}>
+              <button key={w.word} disabled={paired[w.word]} onClick={() => pick("bn", w.word)}
+                className={clsx("w-full rounded-xl border px-3 py-2 text-left text-[13.5px] transition-colors", paired[w.word] ? "border-good bg-good/10 opacity-70" : wrong === "bn:" + w.word ? "border-bad bg-bad/10" : sel?.side === "bn" && sel.word === w.word ? "border-accent bg-accent-soft" : "border-line")}>
                 {w.bengali}
               </button>
             ))}
           </div>
           <div className="space-y-2">
             {bn.map((word) => (
-              <button key={word} disabled={paired[word]} onClick={() => {
-                if (!sel) return;
-                if (sel === word) { setPaired((p) => ({ ...p, [word]: true })); setSel(null); speak(word); }
-                else { setWrong(word); setTimeout(() => setWrong(null), 500); }
-              }}
-                className={clsx("w-full rounded-xl border px-3 py-2 text-left text-[14px] font-medium transition-colors", paired[word] ? "border-good bg-good/10 opacity-70" : wrong === word ? "border-bad bg-bad/10" : "border-line hover:border-accent/60")}>
+              <button key={word} disabled={paired[word]} onClick={() => pick("en", word)}
+                className={clsx("w-full rounded-xl border px-3 py-2 text-left text-[14px] font-medium transition-colors", paired[word] ? "border-good bg-good/10 opacity-70" : wrong === "en:" + word ? "border-bad bg-bad/10" : sel?.side === "en" && sel.word === word ? "border-accent bg-accent-soft" : "border-line hover:border-accent/60")}>
                 {word}
               </button>
             ))}

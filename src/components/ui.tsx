@@ -123,6 +123,7 @@ export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { id: 
         <button
           key={t.id}
           onClick={() => onChange(t.id)}
+          aria-pressed={value === t.id}
           className={clsx("whitespace-nowrap rounded-lg px-3 py-1.5 text-[13.5px] transition-colors", value === t.id ? "bg-accent-soft font-medium text-accent" : "text-muted hover:text-ink")}
         >
           {t.label}

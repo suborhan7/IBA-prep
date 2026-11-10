@@ -11,6 +11,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { registerCustom } from "@/lib/custom-registry";
 import InstallButton, { useServiceWorker } from "./InstallButton";
+import { StorageBanner } from "./StorageCheck";
 import { useAutoSync } from "@/lib/sync";
 
 export const NAV = [
@@ -124,7 +125,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
+      <div className="min-w-0">
+      <StorageBanner />
       <main className="mx-auto w-full min-w-0 max-w-6xl px-4 py-6 sm:px-6 lg:px-10 lg:py-8">{children}</main>
+      </div>
     </div>
   );
 }

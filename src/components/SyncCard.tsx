@@ -46,8 +46,8 @@ export default function SyncCard() {
         <>
           <p className="text-[13.5px] text-muted">This device syncs with the code below. Enter the same code on your other device. Syncing happens automatically when the app opens, every 5 minutes, and when you switch away.</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <code className="rounded-xl bg-surface-2 px-3 py-2 text-[15px] font-semibold tracking-wide">{code}</code>
-            <Button size="sm" variant="ghost" onClick={() => navigator.clipboard?.writeText(code).then(() => setMsg({ text: "Copied." }))}><Copy size={14} /> Copy</Button>
+            <code className="select-all break-all rounded-xl bg-surface-2 px-3 py-2 text-[15px] font-semibold tracking-wide">{code}</code>
+            <Button size="sm" variant="ghost" onClick={() => { const p = navigator.clipboard?.writeText(code); if (p) p.then(() => setMsg({ text: "Copied." }), () => setMsg({ text: "Couldn't copy automatically. Select the code and copy it by hand." })); else setMsg({ text: "Couldn't copy automatically. Select the code and copy it by hand." }); }}><Copy size={14} /> Copy</Button>
             <Button size="sm" onClick={() => run()} disabled={busy}><RefreshCw size={14} className={busy ? "animate-spin" : ""} /> {busy ? "Syncing…" : "Sync now"}</Button>
             <Button size="sm" variant="ghost" onClick={async () => { await setSyncCode(null); setCode(null); setMsg({ text: "Stopped syncing on this device. Your progress here is kept." }); }}><CloudOff size={14} /> Stop syncing here</Button>
           </div>

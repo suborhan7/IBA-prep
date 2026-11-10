@@ -1,11 +1,11 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import { Pause, Play, RotateCcw, Timer } from "lucide-react";
 import type { Question } from "@/lib/types";
 import type { AttemptMode } from "@/lib/db";
-import { getSetting, setSetting } from "@/lib/db";
-import { recordAnswer } from "@/lib/engine";
+import { getSetting, setSetting, withTimeout } from "@/lib/db";
+import { recordAnswer, recordAnswers } from "@/lib/engine";
 import { getQuestion } from "@/lib/bank";
 import { loadCustom } from "@/lib/custom-registry";
 import { topicLabel } from "@/data/taxonomy";
@@ -23,6 +23,8 @@ interface Saved {
   qids: string[];
   idx: number;
   results: Result[];
+  choices?: (number | null)[];
+  times?: number[];
 }
 
 /**
@@ -58,20 +60,24 @@ export default function PracticeSession({
   const [remaining, setRemaining] = useState(timeLimitSec ?? 0);
   const [qStart, setQStart] = useState(Date.now());
   const [loaded, setLoaded] = useState(!saveKey);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const finishing = useRef(false);
   const done = idx >= qs.length;
 
   // resume
   useEffect(() => {
     if (!saveKey) return;
     (async () => {
-      await loadCustom();
-      const s = await getSetting<Saved | null>(saveKey, null);
+      await withTimeout(loadCustom(), 2500, undefined);
+      const s = await withTimeout(getSetting<Saved | null>(saveKey, null), 2500, null);
       if (s && s.idx < s.qids.length) {
         const restored = s.qids.map((id) => getQuestion(id)).filter(Boolean) as Question[];
         if (restored.length === s.qids.length) {
           setQs(restored);
           setIdx(s.idx);
           setResults(s.results);
+          if (s.choices) setTimedChoices(s.choices);
+          if (s.times) setTimedTimes(s.times);
           // the current question was already checked (e.g. you opened the tutor) → show its result again
           if (mode === "practice" && s.results.length > s.idx) setSubmitted(true);
         }
@@ -83,8 +89,8 @@ export default function PracticeSession({
 
   useEffect(() => {
     if (!saveKey || !loaded) return;
-    setSetting(saveKey, done ? null : { qids: qs.map((q) => q.id), idx, results });
-  }, [saveKey, loaded, idx, results, qs, done]);
+    setSetting(saveKey, done ? null : { qids: qs.map((q) => q.id), idx, results, choices: timedChoices, times: timedTimes });
+  }, [saveKey, loaded, idx, results, qs, done, timedChoices, timedTimes]);
 
   // countdown for timed sets
   useEffect(() => {
@@ -102,10 +108,14 @@ export default function PracticeSession({
 
   async function submitPractice(chosen: number | null, timeMs: number) {
     if (!q) return;
-    if (results.length > idx) return setSubmitted(true); // already recorded
-    const { correct } = await recordAnswer(q, chosen, timeMs, attemptMode);
+    if (submitted) return;
+    if (results.length > idx) return setSubmitted(true); // already recorded (resumed set)
+    // Show the result immediately; saving to storage happens in the background
+    // so a slow or blocked browser database can never freeze the Check button.
+    const correct = chosen === q.answer;
     setResults((r) => [...r, { qid: q.id, chosen, correct, timeMs }]);
     setSubmitted(true);
+    recordAnswer(q, chosen, timeMs, attemptMode).catch((e) => setSaveError(String(e?.message ?? e)));
   }
 
   function next() {
@@ -127,16 +137,16 @@ export default function PracticeSession({
     else setIdx(idx + 1);
   }
 
-  async function finishTimed(choices = timedChoices, times = timedTimes) {
-    const res: Result[] = [];
-    for (let i = 0; i < qs.length; i++) {
+  function finishTimed(choices = timedChoices, times = timedTimes) {
+    if (finishing.current) return;
+    finishing.current = true;
+    const res: Result[] = qs.map((q, i) => {
       const c = choices[i] ?? null;
-      const t = times[i] ?? 0;
-      const { correct } = await recordAnswer(qs[i], c, t, attemptMode);
-      res.push({ qid: qs[i].id, chosen: c, correct, timeMs: t });
-    }
+      return { qid: q.id, chosen: c, correct: c === q.answer, timeMs: times[i] ?? 0 };
+    });
     setResults(res);
     setIdx(qs.length);
+    recordAnswers(qs.map((q, i) => ({ q, chosen: res[i].chosen, timeMs: res[i].timeMs })), attemptMode).catch((e) => setSaveError(String(e?.message ?? e)));
   }
 
   useEffect(() => {
@@ -147,10 +157,14 @@ export default function PracticeSession({
   if (!loaded) return null;
   if (!qs.length) return <Card>No questions available for this selection yet.</Card>;
 
-  if (done) return <SessionSummary qs={qs} results={results} title={title} />;
+  const saveWarning = saveError && (
+    <div className="mb-3 rounded-xl border border-warn/50 bg-warn/10 px-4 py-2 text-[13px]">Your answers are shown, but this browser couldn't save them ({saveError}). Progress for this set may not be kept. See Settings → Storage check.</div>
+  );
+  if (done) return <>{saveWarning}<SessionSummary qs={qs} results={results} title={title} /></>;
 
   return (
     <Card className="p-5 sm:p-7">
+      {saveWarning}
       <div className="mb-4 flex items-center gap-3">
         <Progress value={(idx / qs.length) * 100} />
         <span className="shrink-0 text-[12.5px] tabular-nums text-muted">{idx}/{qs.length}</span>
